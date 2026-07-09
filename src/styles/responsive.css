@@ -1,0 +1,59 @@
+/* ── Global responsive & judge-access experience ── */
+
+/* Prevent horizontal overflow sitewide */
+html,
+body,
+#root,
+.layout,
+.layout-main {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* Scroll offset for sticky navbar */
+[id] {
+  scroll-margin-top: 72px;
+}
+
+/* Touch-friendly minimum tap targets on mobile */
+@media (max-width: 768px) {
+  .home-btn,
+  .report-btn,
+  .platform-btn,
+  .demo-submit-btn,
+  .demo-action-btn,
+  .navbar-link,
+  .navbar-cta,
+  .demo-scene-btn,
+  .demo-toggle-btn {
+    min-height: 44px;
+  }
+
+  .home-btn,
+  .report-btn,
+  .platform-btn,
+  .demo-action-btn,
+  .demo-submit-btn {
+    white-space: normal;
+    text-align: center;
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+  }
+
+  .demo-input,
+  .demo-scene-btn {
+    min-height: 42px;
+  }
+
+  /* Section spacing tighter on small screens */
+  :root {
+    --section-gap: 3.25rem;
+  }
+}
+
+/* Report document edge padding on phones */
+@media (max-width: 480px) {
+  .report-document {
+    border-radius: var(--radius);
+  }
+}

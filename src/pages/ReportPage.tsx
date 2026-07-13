@@ -1,3 +1,4 @@
+import { useCallback, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ROUTES } from '../router/paths'
 import ChartCard from '../components/charts/ChartCard'
@@ -8,7 +9,24 @@ import {
   buildEnergyCompareOption,
   buildHostingPathOption,
 } from './chartConfigs/reportCharts'
+import { generateReportPdf, PDF_PROGRESS } from '../utils/generateReportPdf'
 import './ReportPage.css'
+
+function PdfGeneratingModal({ message }: { message: string }) {
+  const isError = message === PDF_PROGRESS.FAILED
+
+  return (
+    <div className="report-pdf-modal" role="dialog" aria-modal="true" aria-live="polite">
+      <div className="report-pdf-modal__backdrop" />
+      <div className="report-pdf-modal__panel">
+        {!isError && <div className="report-pdf-modal__spinner" aria-hidden="true" />}
+        <p className={`report-pdf-modal__message${isError ? ' report-pdf-modal__message--error' : ''}`}>
+          {message}
+        </p>
+      </div>
+    </div>
+  )
+}
 
 const projectInfo = [
   { label: '项目类型', value: '酒店' },
@@ -59,6 +77,38 @@ const suggestions = [
 ]
 
 export default function ReportPage() {
+  const reportDocumentRef = useRef<HTMLDivElement>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [showPdfModal, setShowPdfModal] = useState(false)
+  const [pdfProgressMessage, setPdfProgressMessage] = useState<string>(PDF_PROGRESS.PREPARING)
+
+  const handleDownloadPdf = useCallback(async () => {
+    const documentRoot = reportDocumentRef.current
+    if (!documentRoot || isGenerating) {
+      return
+    }
+
+    setIsGenerating(true)
+    setPdfProgressMessage(PDF_PROGRESS.PREPARING)
+    setShowPdfModal(true)
+
+    try {
+      await generateReportPdf(documentRoot, setPdfProgressMessage)
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 600)
+      })
+      setShowPdfModal(false)
+    } catch {
+      setPdfProgressMessage(PDF_PROGRESS.FAILED)
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 2200)
+      })
+      setShowPdfModal(false)
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [isGenerating])
+
   return (
     <div className="report">
       <header className="report-header">
@@ -72,9 +122,10 @@ export default function ReportPage() {
             <button
               type="button"
               className="report-btn report-btn--primary"
-              onClick={() => window.alert('PDF 报告样例整理中')}
+              onClick={handleDownloadPdf}
+              disabled={isGenerating}
             >
-              下载 PDF 报告
+              {isGenerating ? '正在生成…' : '下载 PDF 报告'}
             </button>
             <Link to={ROUTES.demo} className="report-btn report-btn--outline">
               查看快测 Demo
@@ -87,7 +138,7 @@ export default function ReportPage() {
       </header>
 
       <div className="report-body">
-        <div className="report-document">
+        <div className="report-document" ref={reportDocumentRef}>
           <div className="report-doc-header">
             <span className="report-doc-badge">脱敏样例</span>
             <h2>能碳快测初步诊断报告</h2>
@@ -121,12 +172,14 @@ export default function ReportPage() {
             </div>
           </section>
 
-          <section className="report-section">
-            <h3 className="report-section-title">数据图表分析</h3>
-            <p className="report-chart-intro">
-              图表用于辅助识别进一步评估方向，基于脱敏样例数据形成，不代表最终能源审计结论。
-            </p>
-            <div className="chart-grid chart-grid--2">
+          <section className="report-section report-section--charts">
+            <div className="report-pdf-block" data-pdf-block>
+              <h3 className="report-section-title">数据图表分析</h3>
+              <p className="report-chart-intro">
+                图表用于辅助识别进一步评估方向，基于脱敏样例数据形成，不代表最终能源审计结论。
+              </p>
+            </div>
+            <div className="chart-grid chart-grid--2 report-pdf-block" data-pdf-block>
               <ChartCard
                 title="年度费用结构"
                 description="年电费与年水费构成（脱敏样例）"
@@ -142,7 +195,7 @@ export default function ReportPage() {
                 variant="light"
               />
             </div>
-            <div className="chart-grid chart-grid--1" style={{ marginTop: '0.75rem' }}>
+            <div className="chart-grid chart-grid--1 report-pdf-block" data-pdf-block style={{ marginTop: '0.75rem' }}>
               <ChartCard
                 title="后续托管价值路径"
                 description="从数据采集到长期托管的业务演进路径"
@@ -151,7 +204,7 @@ export default function ReportPage() {
                 variant="light"
               />
             </div>
-            <p className="chart-disclaimer chart-disclaimer--light">
+            <p className="chart-disclaimer chart-disclaimer--light report-pdf-block" data-pdf-block>
               {CHART_DISCLAIMER_SHORT} 正式项目需结合客户授权数据进一步核算。
             </p>
           </section>
@@ -220,6 +273,8 @@ export default function ReportPage() {
           </footer>
         </div>
       </div>
+
+      {showPdfModal && <PdfGeneratingModal message={pdfProgressMessage} />}
     </div>
   )
 }
